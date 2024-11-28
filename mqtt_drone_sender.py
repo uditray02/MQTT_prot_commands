@@ -245,37 +245,37 @@ class StreamPublisher:
     def publish_lte_signal(self):
         print("Publishing LTE signal to topic: {}".format(self.lte_topic))
         while True:
-            if self.frame_rate == 20:
-                # Publish LTE signal data normally
-                lte_data = {
-                    'signal_strength': 'good'  # Replace with actual LTE signal data
-                }
+            if not self.client.is_connected():
+                print("MQTT client not connected. Reconnecting...")
+                self.client.reconnect()
+            print(f"Current frame rate: {self.frame_rate}")
+            if self.frame_rate == 30:
+                lte_data = {'signal_strength': 'good'}
                 lte_message = json.dumps(lte_data)
                 try:
                     result = self.client.publish(self.lte_topic, lte_message)
                     if result.rc != mqtt.MQTT_ERR_SUCCESS:
                         print(f"LTE publish failed with code: {result.rc}")
+                        print(f"Reason: {mqtt.error_string(result.rc)}")
                 except Exception as e:
                     print(f"Failed to publish LTE signal data: {e}")
-                time.sleep(1)  # Publish at regular rate for FPS 20
-            elif self.frame_rate == 15:
-                # Publish LTE signal data at half the regular rate (every 2 frames)
-                lte_data = {
-                    'signal_strength': 'fair'  # Replace with actual LTE signal data
-                }
+                time.sleep(1)
+            
+            elif self.frame_rate == 20:
+                lte_data = {'signal_strength': 'fair'}
                 lte_message = json.dumps(lte_data)
                 try:
                     result = self.client.publish(self.lte_topic, lte_message)
                     if result.rc != mqtt.MQTT_ERR_SUCCESS:
                         print(f"LTE publish failed with code: {result.rc}")
+                        print(f"Reason: {mqtt.error_string(result.rc)}")
                 except Exception as e:
                     print(f"Failed to publish LTE signal data: {e}")
-                time.sleep(2)  # Publish every 2 seconds for FPS 15
+                time.sleep(2)
             elif self.frame_rate == 10:
-                # Do not publish LTE signal data for FPS 10 (disabled)
                 print("LTE signal publishing disabled due to low FPS.")
-                time.sleep(1)  # No LTE signal publishing, just wait
-    
+            time.sleep(1)
+
     def publish_audio(self):
         print(f"Publishing audio to topic: {self.audio_topic}")
         p = pyaudio.PyAudio()
