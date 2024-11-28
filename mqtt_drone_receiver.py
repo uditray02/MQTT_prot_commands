@@ -150,3 +150,5 @@ with sd.InputStream(samplerate=sample_rate, channels=channels, callback=audio_ca
         print("\nAll MQTT messages received and processed:")
         for message in received_messages:
             print(message)
+
+
