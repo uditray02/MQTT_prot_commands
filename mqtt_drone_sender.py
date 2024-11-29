@@ -18,6 +18,11 @@ class StreamPublisher:
         self.client.on_publish = self.on_publish
         self.client.connect(host, port, keepalive=60)
         self.client.loop_start()
+
+        # Subscribe to control topic for camera commands
+        self.client.subscribe("/drone/camera/control")
+        self.client.on_message = self.on_message  # Set the callback for incoming messages
+
         self.topic = topic
         self.gps_topic = gps_topic
         self.lte_topic = lte_topic
@@ -53,7 +58,6 @@ class StreamPublisher:
         self.lte_thread = threading.Thread(target=self.publish_lte_signal)
         self.audio_thread = threading.Thread(target=self.publish_audio)
 
-
         self.publish_success_count = 0
         self.publish_total_count = 0
 
@@ -73,9 +77,6 @@ class StreamPublisher:
             self.lte_thread.start()
             self.audio_thread.start()
 
-
-
-
     def on_connect(self, client, userdata, flags, rc, *args):
         if rc == 0:
             print("Connected successfully to the MQTT broker.")
@@ -87,6 +88,36 @@ class StreamPublisher:
 
     def on_publish(self, client, userdata, mid):
         self.publish_success_count += 1
+
+    def on_message(self, client, userdata, message):
+        try:
+            payload = json.loads(message.payload)
+            action = payload.get("action")
+            value = payload.get("value")
+
+            if action == "cam_pitch":
+                print(f"Received cam_pitch command: {value}")
+                # Handle cam_pitch here
+            elif action == "cam_yaw":
+                print(f"Received cam_yaw command: {value}")
+                # Handle cam_yaw here
+            elif action == "fly":
+                print("Received fly command")
+                # Handle the fly action here
+            elif action == "land":
+                print("Received land command:")
+                # Handle the land action here
+            elif action == "hover":
+                print("Received hover command: ")
+                # Handle the hover action here
+            elif action == "stop":
+                print("Received stop command:")
+                # Handle the stop action here
+
+
+        except Exception as e:
+            print(f"Error handling message: {e}")
+    
 
     def capture_frames(self):
         print("Capturing from video source: {}".format(self.video_source))
@@ -218,29 +249,24 @@ class StreamPublisher:
                 if result.rc != mqtt.MQTT_ERR_SUCCESS:
                     print(f"Velocity publish failed with code: {result.rc}")
             except Exception as e:
-                    print(f"Failed to publish velocity data: {e}")
+                print(f"Error publishing velocity: {e}")
 
-            time.sleep(1)  # Publish velocity data every 1 second
+            time.sleep(1)
 
     def publish_flight_time(self):
         print("Publishing flight time to topic: /drone/flight_time")
         while True:
             if self.flight_start_time:
-                # Calculate flight time in seconds
-                current_time = time.time()
-                flight_time = current_time - self.flight_start_time
-                # Publish flight time
-                flight_time_data = {
-                    'flight_time': flight_time
-                }
-                flight_time_message = json.dumps(flight_time_data)
+                flight_time = time.time() - self.flight_start_time
+                flight_time_data = {'flight_time': flight_time}
                 try:
-                    result = self.client.publish("/drone/flight_time", flight_time_message)
+                    result = self.client.publish("/drone/flight_time", json.dumps(flight_time_data))
                     if result.rc != mqtt.MQTT_ERR_SUCCESS:
                         print(f"Flight time publish failed with code: {result.rc}")
                 except Exception as e:
-                    print(f"Failed to publish flight time data: {e}")
-            time.sleep(1)  # Publish flight time data every 1 second
+                    print(f"Error publishing flight time: {e}")
+
+            time.sleep(1)
 
     def publish_lte_signal(self):
         print("Publishing LTE signal to topic: {}".format(self.lte_topic))
@@ -277,38 +303,19 @@ class StreamPublisher:
             time.sleep(1)
 
     def publish_audio(self):
-        print(f"Publishing audio to topic: {self.audio_topic}")
-        p = pyaudio.PyAudio()
-
-        try:
-            self.audio_stream = p.open(format=self.audio_format,
-                                       channels=self.channels,
-                                       rate=self.sample_rate,
-                                       input=True,
-                                       frames_per_buffer=self.chunk_size)
-        except Exception as e:
-            print(f"Failed to open audio stream: {e}")
-            return
+        print("Publishing audio data to topic: /drone/audio")
+        pyaudio_instance = pyaudio.PyAudio()
+        stream = pyaudio_instance.open(format=self.audio_format, channels=self.channels, rate=self.sample_rate, input=True, frames_per_buffer=self.chunk_size)
 
         while True:
+            audio_data = stream.read(self.chunk_size)
             try:
-                audio_data = self.audio_stream.read(self.chunk_size, exception_on_overflow=False)
                 result = self.client.publish(self.audio_topic, audio_data)
                 if result.rc != mqtt.MQTT_ERR_SUCCESS:
                     print(f"Audio publish failed with code: {result.rc}")
             except Exception as e:
-                print(f"Failed to publish audio: {e}")
+                print(f"Error publishing audio: {e}")
+            time.sleep(0.1)
 
-        self.audio_stream.stop_stream()
-        self.audio_stream.close()
-        p.terminate()
-
-if __name__ == "__main__":
-    publisher = StreamPublisher(
-        topic="/drone/video",
-        gps_topic="/drone/gps",
-        lte_topic="/drone/lte_signal",
-        video_address="video.mp4",
-        audio_topic="/drone/audio",
-        start_stream=True
-    )
+# Initialize StreamPublisher class
+publisher = StreamPublisher(topic="/drone/video", gps_topic="/drone/gps", lte_topic="/drone/lte_signal", audio_topic="/drone/audio")
