@@ -78,7 +78,7 @@ def audio_callback(indata, frames, time, status):
 
 # Function to handle joystick input
 def handle_joystick_input():
-    global cam_pitch, cam_yaw
+    global cam_pitch, cam_yaw, fly, land, hover, stop 
     pygame.event.pump()  # Update joystick state
     if joystick_connected:
         for button in range(joystick.get_numbuttons()):
@@ -100,22 +100,22 @@ def handle_joystick_input():
                 elif button == 4:  # Button 5 (cam_pitch up)
                     if cam_pitch < 30:
                         cam_pitch += 1
-                    client.publish("/drone/camera", json.dumps({"action": "cam_pitch", "value": cam_pitch}))
+                    client.publish("/drone/camera/control", json.dumps({"action": "cam_pitch", "value": cam_pitch}))
                     print(f"Button 5 pressed: Sending cam_pitch up command with value {cam_pitch}")
                 elif button == 5:  # Button 6 (cam_pitch down)
                     if cam_pitch > -90:
                         cam_pitch -= 1
-                    client.publish("/drone/camera", json.dumps({"action": "cam_pitch", "value": cam_pitch}))
+                    client.publish("/drone/camera/control", json.dumps({"action": "cam_pitch", "value": cam_pitch}))
                     print(f"Button 6 pressed: Sending cam_pitch down command with value {cam_pitch}")
                 elif button == 6:  # Button 7 (cam_yaw left)
                     if cam_yaw > 0:
                         cam_yaw -= 1
-                    client.publish("/drone/camera", json.dumps({"action": "cam_yaw", "value": cam_yaw}))
+                    client.publish("/drone/camera/control", json.dumps({"action": "cam_yaw", "value": cam_yaw}))
                     print(f"Button 7 pressed: Sending cam_yaw left command with value {cam_yaw}")
                 elif button == 7:  # Button 8 (cam_yaw right)
                     if cam_yaw < 270:
                         cam_yaw += 1
-                    client.publish("/drone/camera", json.dumps({"action": "cam_yaw", "value": cam_yaw}))
+                    client.publish("/drone/camera/control", json.dumps({"action": "cam_yaw", "value": cam_yaw}))
                     print(f"Button 8 pressed: Sending cam_yaw right command with value {cam_yaw}")
 
 # Create MQTT client
@@ -150,5 +150,3 @@ with sd.InputStream(samplerate=sample_rate, channels=channels, callback=audio_ca
         print("\nAll MQTT messages received and processed:")
         for message in received_messages:
             print(message)
-
-
